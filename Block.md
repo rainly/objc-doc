@@ -157,3 +157,47 @@ Block用作回调函数比传统的回调函数有以下的优越性:
 
 * 在函数调用的时候，将Block作为一个参数传给函数
 * 允许访问本地变量，这样可以避免通过结构体将本地变量封装后传递给回调函数
+
+**应用1: Animations & Completion Handler** 
+
+	 [UIView animateWithDuration:2 
+  	                animations:^{
+ 	                     self.view.backgroundColor = [UIColor redColor];
+ 	                 }  
+ 	                 completion:^(BOOL finished){
+ 	                     if (finished){
+ 	                         self.view.backgroundColor = [UIColor blueColor];
+ 	                     } 
+ 	                 }];
+ 	                 
+ 	                 
+**应用2: Enumeration**   
+对数据集合类中的每一个元素进行遍历，每次传入一个对象，进行处理
+
+	NSArray *cards = [NSArray arrayWithObjects:@"Jack", @"Queen", @"King", @"Ace", nil];
+	[cards enumerateObjectsUsingBlock:^(id object, NSUInteger index, BOOL *stop) {
+        NSLog(@"%@ card at index %d", object, index);
+    }];
+    
+**应用3: Notification Handler**
+    
+	    [[NSNotificationCenter defaultCenter] 
+	     addObserverForName:@"TestNotification" 
+	     object:nil 
+	     queue:aNSOperationQueue 
+	     usingBlock:^(NSNotification *notification){
+	         NSLog(@"Notification: %@",notification);
+	     }];
+	     
+	     
+**应用4: GCD**
+
+	         dispatch_queue_t imageDownloadQueue = dispatch_queue_create("Image Download Queue", NULL);
+ 	   dispatch_async(imageDownloadQueue, ^{
+  	      NSURL *imageURL = [NSURL URLWithString:@"http://xxx.xx.com/a.png"];
+  	      NSData *imageData = [NSData dataWithContentsOfURL:imageURL];
+  	      UIImage *image = [UIImage imageWithData:imageData];
+  	      dispatch_async(dispatch_get_main_queue(), ^{
+  	          [imageView setImage:image];
+  	      });
+  	  });     
