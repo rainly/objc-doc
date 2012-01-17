@@ -1,13 +1,13 @@
 #Blocks编程
 
-* [介绍][section-introduction]
-* [声明创建和调用][section-declare-create-invoke]
-* [Block和变量][section-block-variable]
-* [Block实际应用][section-practice]
+* 介绍
+* 声明创建和调用
+* Block和变量
+* Block实际应用
 
 ---
 
-### 1.介绍[section-introduction]
+### 1.介绍
 Block是一个C Level的语法以及运行时的一个特性,非常像标准C中的函数(函数指针)，但是其运行需要编译器和运行时支持,目前LLVM+Clang可以很好的支持Block(苹果修改过的GCC也可以)。Block和函数不同的是其语义 **闭包** 特性，以及可以有匿名block的存在。
 你可以在LLVM的官方网站查看[Block语言规范][link-block-spec].   
 [link-block-spec]:http://clang.llvm.org/docs/BlockLanguageSpec.txt
@@ -26,7 +26,7 @@ Block是一个C Level的语法以及运行时的一个特性,非常像标准C中
 block的调用就和C函数的使用类似.
 
 
-###2. 声明创建和调用[section-declare-create-invoke]
+###2. 声明创建和调用
    
 **声明Block变量**   
 block变量保存着指向block的指针，声明一个block变量就和声明一个函数指针变量类似，只是将*改成了^.
@@ -82,9 +82,9 @@ Block的调用和函数的调用是非常相似的,如上面定义的blockReturn
 
 	^{ ++i; }();
 
-### 3.Block和变量[section-block-variable]
+### 3.Block和变量
 
-一个Block的内部是可以引用自身作用域外的变量的，包括static变量，extern变量或自由变量[^auto-var] ,对于自由变量，在Block中是只读的。在引入block的同时，还引入了一种特殊的变量存储修饰符`__block`,通过它的变量叫做block变量，block变量在block内部可以进行写操作的。这些变量中，自由变量是最特殊的，在Block声明的时候，自由变量在Block内部只读且其值被固定住（可以想像成将自由变量从stack拷贝了一份到heap且限制为const），即使在block调用前改变了这个自由变量的值，block调用的时候，看到的却还是block声明的时候的那个值。
+一个Block的内部是可以引用自身作用域外的变量的，包括static变量，extern变量或自由变量（定义一个变量的时候，如果不加存储修饰符，默认情况下就是自由变量auto,auto变量保存在stack中的.除了auto之外还存在register，static等存储修饰符） ,对于自由变量，在Block中是只读的。在引入block的同时，还引入了一种特殊的变量存储修饰符`__block`,通过它的变量叫做block变量，block变量在block内部可以进行写操作的。这些变量中，自由变量是最特殊的，在Block声明的时候，自由变量在Block内部只读且其值被固定住（可以想像成将自由变量从stack拷贝了一份到heap且限制为const），即使在block调用前改变了这个自由变量的值，block调用的时候，看到的却还是block声明的时候的那个值。
 
 **代码示例 3.1**
 
@@ -111,7 +111,7 @@ Block的调用和函数的调用是非常相似的,如上面定义的blockReturn
 
 
 Block定义时内存是分配在stack上的，当其作用域结束，就会被自动释放，所以你不需要去担心它的内存情况，我们可以对一个Block进行`Block_copy()`操作，`Block_copy()`之后，Block会被拷贝到heap中的内存中，且其所有的引用到的自由变量也将会被拷贝，当然你得记得通过`Block_release()`释放heap的内存空间哦。
-在objc对象中Block是和对象一样被看作一等公民的（其实这是objc的Block扩展的功劳），你可以像使用对象那样对Block进行retain[^block-retain],copy以及release操作.
+在objc对象中Block是和对象一样被看作一等公民的（其实这是objc的Block扩展的功劳），你可以像使用对象那样对Block进行retain（retain只对heap中的Block起作用）,copy以及release操作.
 
 在Block内部如果引用到对象或者对象的成员变量，那么当Block被拷贝`Block_copy()`之后，这个对象的引用计数会增加。
 
@@ -147,13 +147,9 @@ Block定义时内存是分配在stack上的，当其作用域结束，就会被�
 
 Block的闭包特性使得Block可以脱离其定义的作用域进行运行，所以你可以在一个函数中返回一个Block，在别的线程或者当前线程的RunLoop的下一个循环中进行运行，而不用担心那些引用到的外部变量是否被释放掉了。
 
-[^auto-var]:定义一个变量的时候，如果不加存储修饰符，默认情况下就是自由变量auto,auto变量保存在stack中的.除了auto之外还存在register，static等存储修饰符
-
-[^block-retain]:retain只对heap中的Block起作用
 
 
-
-###4.Block实际应用[section-practice]
+###4.Block实际应用
 那么我们一般什么时候会用到Block呢？
 Blocks通常是一小段自包含的代码片段.所以它经常被用于多线程运行的代码单元(如GCD)，或用于处理聚合类元素单元，或者作为某个函数调用完成后的回调函数.
 
