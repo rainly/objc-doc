@@ -3,7 +3,7 @@
 ###Socket简介   
 
 在UNIX系统中,万物皆文件(Everything is a file)。所有的IO操作都可以看作对文件的IO操作，都遵循着这样的操作模式:打开 -> 读/写 -> 关闭，打开操作（如open函数）获取“文件”使用权，返回文件描述符，后继的操作都通过这个文件描述符来进行。很多系统调用都依赖于文件描述符,它是一个无符号整数，每一个用户进程都对应着一个文件描述符表，通过文件描述符就可以找到对应文件的信息。
-在类UNIX平台上，对于控制台的标准输入输出以及标准错误输出都有对应的文件描述符分别为0,1,2。它们定义在 `unistd.h`中
+在类UNIX平台上，对于控制台的标准输入输出以及标准错误输出都有对应的文件描述符，分别为0,1,2。它们定义在 `unistd.h`中
 
 	#define	 STDIN_FILENO	0	/* standard input file descriptor */
 	#define	STDOUT_FILENO	1	/* standard output file descriptor */
@@ -17,13 +17,13 @@
 [img-openedfiles]: img/openedfiles.png  class="shadow"
 
 UNIX内核加入TCP/IP协议的时候，便在系统中引入了一种新的IO操作，只不过由于网络连接的不可靠性，所以网络IO比本地设备的IO复杂很多。这一系列的接口叫做BSD Socket API,当初由伯克利大学研发，最终成为网络开发接口的标准。
-网络通信从本质上讲也是进程间通信，只是这两个进程一般在网络中不同计算机上。当然Socket API其实也提供了专门用于本地IPC的使用方式，UNIX Domain Socket，这个这里就不细说了。本文所讲的Socket如无例外，均是说的Internet Socket。
+网络通信从本质上讲也是进程间通信，只是这两个进程一般在网络中不同计算机上。当然Socket API其实也提供了专门用于本地IPC的使用方式：UNIX Domain Socket，这个这里就不细说了。本文所讲的Socket如无例外，均是说的Internet Socket。
 
 在本地的进程中，每一个进程都可以通过PID来标识，对于网络上的一个计算机中的进程如何标识呢？网络中的计算机可以通过一个IP地址进行标识，一个计算机中的某个进程则可以通过一个无符号整数（端口号）来标识，所以一个网络中的进程可以通过`IP地址+端口号`的方式进行标识。 
 
 ###BSD Socket编程准备
 ####地址
-在程序中，我们如何标识一个地址呢？在 `<sys/socket.h>`中的sockaddr便是描述socket地址的结构体类型.
+在程序中，我们如何保存一个地址呢？在 `<sys/socket.h>`中的sockaddr便是描述socket地址的结构体类型.
 
 	/*
  	* [XSI] Structure used by kernel to store most addresses.
@@ -42,9 +42,9 @@ UNIX内核加入TCP/IP协议的时候，便在系统中引入了一种新的IO�
 	struct sockaddr_in {
 		__uint8_t	sin_len;
 		sa_family_t	sin_family;
-		in_port_t	sin_port;
+		in_port_t	sin_port;//得是网络字节序
 		struct	in_addr sin_addr;//in_addr存在的原因则是历史原因，其实质是代表一个IP地址的32位整数
-		char		sin_zero[8];//bzero 为了兼容sockaddr
+		char		sin_zero[8];//bzero之，纯粹是为了兼容sockaddr
 	};
 	
 在实际编程的时候，经常需要将sockaddr_in强制转换成sockaddr类型。    
@@ -53,7 +53,7 @@ UNIX内核加入TCP/IP协议的时候，便在系统中引入了一种新的IO�
 说到端口我们经常会联想到硬件，在网络编程中的端口其实是一个标识而已，或者说是系统的资源而已。系统提供了端口分配和管理的机制。
 
 ####网络字节序
-谈网络字节序(Endianness)之前我们先说说什么是字节序。字节序又叫端序，就是指计算机中存放多字节数据的字节的顺序。典型的就是数据存放在内存中或者网络传输时的字节的顺序。常用的字节序有大端序(big-endian)，小端序(litle-endian,另还有不常见的混合序middle-endian)。不同的CPU可能会使用不同的字节序，如X86，PDP-11等处理器为小端序，Motorola 6800,PowerPC 970等使用的是大端序。小端序是指低字节位存放在内存地址的低端，高端序是指高位字节存放在内存的低端。
+谈网络字节序(Endianness)之前我们先说说什么是字节序。字节序又叫端序，就是指计算机中存放 **多字节数据**的字节的顺序。典型的就是数据存放在内存中或者网络传输时的字节的顺序。常用的字节序有大端序(big-endian)，小端序(litle-endian,另还有不常见的混合序middle-endian)。不同的CPU可能会使用不同的字节序，如X86，PDP-11等处理器为小端序，Motorola 6800,PowerPC 970等使用的是大端序。小端序是指低字节位存放在内存地址的低端，高端序是指高位字节存放在内存的低端。
 举个例子来说明什么是大端序和小端序：
 比如一个4字节的整数 16进制形式为 0x12345678，最左边是高位。
 
@@ -76,12 +76,12 @@ TCP/IP 各层协议将字节序使用的是大端序，我们把TCP/IP协议中�
 	#define ntohl(x)	__DARWIN_OSSwapInt32(x)  //32位整数 网络字节序转主机字节序
 	#define htonl(x)	__DARWIN_OSSwapInt32(x) //32位整数 主机字节序转网络字节序
 	
->以上声明中 n代表netwrok h代表host
+>以上声明中 n代表netwrok， h代表host ，s代表short，l代表long
 
-
+如果数据是单字节的话，则其没有字节序的说法了。
 
 ####半相关与全相关
-半相关（half-association）是指一个三元组 (协议,本地IP地址,本地端口),通过这个三元组就可以唯一标识一个网络中的进程。但是实际进行通信的过程，至少需要两个进程，且它们所使用的协议必须一致，所以一个完成的网络通信至少需要一个五元组表示(协议,本地地址,本地端口,远端地址,远端端口)，这样的五元组叫做全相关。
+半相关（half-association）是指一个三元组 `(协议,本地IP地址,本地端口)`,通过这个三元组就可以唯一标识一个网络中的进程,一般用于listening socket。但是实际进行通信的过程，至少需要两个进程，且它们所使用的协议必须一致，所以一个完成的网络通信至少需要一个五元组表示`(协议,本地地址,本地端口,远端地址,远端端口)`，这样的五元组叫做全相关。
 
 ####网络编程模型
 网络存在的本质其实就是网络中个体之间的在某个领域的信息存在不对等性，所以一般情况下总有一些个体为另一些个体提供服务。提供服务器的我们把它叫做服务器，接受服务的叫做客户端。所以在网络编程中，也存在服务器端和客户端之分。
@@ -634,6 +634,8 @@ kqueue使用的流程一般如下：
 		}
 
 
+其实kqueue的应用场景非常的广阔，可以监控文件系统中文件的变化（对文件变化的事件可以粒度非常的细，具体可以查看kqueue的手册），监控系统进程的生命周期。GCD的事件处理便是建立在kqueue之上的。
+
 ###使用Streams
 使用Objective-C的一大优点便是面向对象编程，使得逻辑抽象得更加优美，更加符合人类思维。
 一开始说过，无论是对于文件的操作或者对于网络的操作，本质上都是IO操作，无非写数据和读数据，可以对这种输入输出进行抽象，抽象成输入流和输出流， **从输入流中读取数据，往输出流中写数据**。
@@ -746,8 +748,8 @@ CoreFoundation中的CFStream提供了输入输出流和CFSocket绑定的函数�
 	            CFWriteStreamSetProperty(writeStream, 
 	                                     kCFStreamPropertyShouldCloseNativeSocket,
 	                                     kCFBooleanTrue);
-	            NSInputStream *inputStream = (NSInputStream *)readStream;
-	            NSOutputStream *outputStream = (NSOutputStream *)writeStream;
+	            NSInputStream *inputStream = (NSInputStream *)readStream;//toll-free bridging
+	            NSOutputStream *outputStream = (NSOutputStream *)writeStream;//toll-free bridging
 	            inputStream.delegate = theChatServer;
 	            [inputStream scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
 	            [inputStream open];
